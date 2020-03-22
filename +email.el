@@ -144,6 +144,15 @@
 
 (map! :map mu4e-view-mode-map :n "C-t" #'iocanel/mark-thread-as-read)
 (map! :map mu4e-headers-mode-map :n "C-t" #'iocanel/mark-thread-as-read)
+
+(defun iocanel/mu4e-view-unread()
+  (interactive)
+  "Open my unread messages."
+  (mu4e-headers-search
+   (mu4e-bookmark-query (car (remove-if-not (lambda (s) (equal (mu4e-bookmark-name s) "Unread messages")) (mu4e-bookmarks))))))
+
+(define-key evil-normal-state-map (kbd "SPC a m") #'iocanel/mu4e-view-unread)
+
 ;;
 ;; Advices
 ;;
