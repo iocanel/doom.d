@@ -1,0 +1,6 @@
+# -*- mode: snippet -*-
+# name: quickmark avatar
+# key: qml
+# --
+#+CAPTION: ${1:Name}
+[[${1:$(qm-avatar-by-name yas-text)}]] $0

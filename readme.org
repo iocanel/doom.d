@@ -1,0 +1,8 @@
+#+title: My Doom Emacs Literate Config
+
+* Table of contents
+
+- [[./init.el][Doom modules]]
+- [[./packages.el][Additional Packages]]
+- [[./config.org][My Literate Configuration]]
+- [[./snippets][My Snippets]]

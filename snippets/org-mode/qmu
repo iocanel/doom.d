@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: quickmark url
+# key: qm
+# --
+[[${1:$(qm-url-by-name yas-text)}][${1:Name}]] $0
