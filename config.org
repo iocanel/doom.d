@@ -1377,6 +1377,60 @@ So, I rolled my own.
                        'headline))))
 #+end_src
 
+*** Org Hugo
+
+**** Configuration
+
+#+begin_src emacs-lisp
+(setq org-hugo-base-dir "~/workspace/src/github.com/iocanel/iocanel.github.io")
+#+end_src
+
+**** Customization
+
+#+begin_src emacs-lisp
+(defun my/org-hugo-set-export-file-name ()
+  "Set the export file name to index.md."
+  (interactive)
+  (let ((name (file-name-nondirectory (directory-file-name (file-name-directory buffer-file-name)))))
+    (save-excursion
+      (goto-char 0)
+      (if (re-search-forward "^#\\+EXPORT_FILE_NAME" nil t)
+          (progn
+            (move-beginning-of-line 1)
+            (kill-line))
+        (progn
+          (while (string-prefix-p "#+" (buffer-substring (bol) (eol)))
+            (next-line 1))
+          (previous-line 1)
+          (move-end-of-line 1)
+          (insert "\n")))
+        (insert "#+EXPORT_FILE_NAME: index.md"))))
+
+(defun my/org-hugo-set-bundle ()
+  "Set the hugo bundle property to match the directory."
+  (interactive)
+  (let ((name (file-name-nondirectory (directory-file-name (file-name-directory buffer-file-name)))))
+    (save-excursion
+      (goto-char 0)
+      (if (re-search-forward "^#\\+HUGO_BUNDLE" nil t)
+          (progn
+            (move-beginning-of-line 1)
+            (kill-line))
+        (progn
+          (while (string-prefix-p "#+" (buffer-substring (bol) (eol)))
+            (next-line 1))
+          (previous-line 1)
+          (move-end-of-line 1)
+          (insert "\n")))
+        (insert (format! "#+HUGO_BUNDLE: %s" name)))))
+
+(defun my/org-hugo-prepare()
+  "Prepare document for export via ox-hugo."
+  (interactive)
+  (my/org-hugo-set-bundle)
+  (my/org-hugo-set-export-file-name))
+#+end_src
+
 *** Code Block Navigation and Evaluation
 **** Functions
 
