@@ -12,6 +12,11 @@
       read-process-output-max (* 1024 1024))
 
 #+end_src
+*** Large file warning
+Let's disable warning about opening large files
+#+begin_src emacs-lisp
+(setq large-file-warning-threshold nil)
+#+end_src
 *** Theme
 
 #+BEGIN_SRC emacs-lisp
