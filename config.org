@@ -1922,3 +1922,16 @@ Integration with `org-capture`. Defines two actions:
         org-gcal-file-alist '(("iocanel@gmail.com" .  "~/Documents/org/calendars/personal.org")
                               ("ikanello@redhat.com" . "~/Documents/org/calendars/work.org"))))
 #+end_src
+
+** Emacs Application Framework
+
+#+begin_src emacs-lisp
+(use-package! eaf
+  :commands (eaf-open-browser eaf-open find-file)
+  :config
+  (use-package! ctable)
+  (use-package! deferred)
+  (use-package! epc)
+  ;;
+  (require 'eaf-browser))
+#+end_src

@@ -77,3 +77,19 @@
 (package! quickmarks :recipe (:host github :repo "iocanel/quickmarks.el" :files ("quickmarks.el")))
 (package! imgflip :recipe (:host github :repo "iocanel/imgflip.el" :files ("imgflip.el")))
 (package! openwith)
+;;
+;; EAF (Emacs Application Framework)
+;;
+
+(when (package! eaf :recipe (:host github
+                             :repo "emacs-eaf/emacs-application-framework"
+                             :files ("*.el" "*.py" "core" "app" "*.json")
+                             :build (:not compile)
+                             :pre-build (("python" "install-eaf.py" "--install" "pdf-viewer" "browser" "--ignore-sys-deps"))))
+
+  (package! eaf-org-previewer :recipe (:host github :repo "emacs-eaf/eaf-org-previewer"))
+  (package! eaf-markdown-previewer :recipe (:host github :repo "emacs-eaf/eaf-markdown-previewer"))
+
+  (package! ctable :recipe (:host github :repo "kiwanami/emacs-ctable"))
+  (package! deferred :recipe (:host github :repo "kiwanami/emacs-deferred"))
+  (package! epc :recipe (:host github :repo "kiwanami/emacs-epc")))
