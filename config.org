@@ -1567,6 +1567,28 @@ Imgflip API client for Emacs Lisp with Yasnippet integration
   (qm-init))
 #+end_src
 
+*** Openwith
+
+#+begin_src emacs-lisp
+(use-package! openwith
+  :config
+  (setq openwith-associations
+        (list
+         (list (openwith-make-extension-regexp
+                '("mpg" "mpeg" "mp3" "mp4"
+                  "avi" "wmv" "wav" "mov" "flv"
+                  "ogm" "ogg" "mkv"))
+               "mpv"
+               '(file))
+         (list (openwith-make-extension-regexp
+                '("xbm" "pbm" "pgm" "ppm" "pnm"
+                  "png" "gif" "bmp" "tif" "jpeg" "jpg"))
+               "geeqie"
+               '(file))
+         ))
+(openwith-mode 1))
+#+end_src
+
 ** Email
 *** Mu4e configuration
 #+begin_src emacs-lisp
