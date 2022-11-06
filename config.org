@@ -1768,8 +1768,8 @@ Imgflip API client for Emacs Lisp with Yasnippet integration
 
 Integration with `org-capture`. Defines two actions:
 
-- Caputre Read later
-- Caputre Follow up
+- Capture Read later
+- Capture Follow up
 
 #+begin_src emacs-lisp
   ;; Capturing, source: https://github.com/daviwil/emacs-from-scratch/blob/master/show-notes/Emacs-Mail-05.org#adding-custom-actions-for-quick-capturing
