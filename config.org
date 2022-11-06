@@ -1591,6 +1591,14 @@ To keep lsp workspace and treemacs aligned.
    c-basic-offset 2
    tab-width 2)
 #+end_src
+**** Snippets
+
+Add IDEE snippets to `yas-snippet-dirs`
+
+ #+begin_src emacs-lisp
+;;(add-to-list 'yas-snippet-dirs '(idee/emacs-snippets-dir idee/emacs-templates-dir))
+ #+end_src
+
 **** Maven integration
 
 #+begin_src emacs-lisp
