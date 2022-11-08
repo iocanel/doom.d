@@ -116,7 +116,6 @@ I used to use `swiper`. Nowdays it seems that `consult-line is a better choice`.
         (consult-line))))
 
 (map! "C-s" #'my/consult-line-with-selection)
-(map! "C-a" #'consult-line-multi)
 #+end_src
 
 
@@ -340,6 +339,22 @@ and just remove the ".project" from the list:
         ;; Redo the agenda
         (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-redo)))
 
+(defun my/org-auto-archive ()
+  "Archieve all completed items in my inbox."
+  (interactive)
+    (save-window-excursion
+      (find-file "/home/iocanel/Documents/org/inbox.org")
+      (goto-char 0)
+      (let ((pos))
+        (while (not (eq (point) pos))
+          (setq pos (point))
+          (outline-next-heading)
+          (let* ((line (buffer-substring-no-properties (bol) (eol)))
+                 (line-without-stars (replace-regexp-in-string "^[\\*]+ " "" line)))
+          (when (string-prefix-p "DONE" line-without-stars)
+            (my/org-archive)
+            (goto-char 0) ;; We need to go back from the beggining to avoid loosing entries
+      (save-buffer)))))))
 #+end_src
 **** Super Agenda
 #+begin_src emacs-lisp

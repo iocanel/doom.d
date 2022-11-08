@@ -82,7 +82,6 @@
         (consult-line))))
 
 (map! "C-s" #'my/consult-line-with-selection)
-(map! "C-a" #'consult-line-multi)
 
 (map! "C-c i g" #'+vertico/project-search)
 
@@ -145,63 +144,80 @@
                           (directory-files-recursively "~/Documents/org/jira" "\.org$")))
 
 (defun my/org-agenda-browse-at-point ()
-  "Browse  the url of the specified item."
-  (interactive)
-  (let ((agenda-window-configuration (current-window-configuration)))
-    (org-agenda-switch-to)
-    (let ((url (car
-                (mapcar (lambda (p) (replace-regexp-in-string (regexp-quote "\"") "" (org-entry-get (point) p)))
-                        (seq-filter (lambda (n) (string-suffix-p "url" n t))
-                                    (mapcar (lambda (e) (car e)) (org-entry-properties)))))))
-      (when url (browse-url  url)))
-    (set-window-configuration agenda-window-configuration)))
+    "Browse  the url of the specified item."
+    (interactive)
+    (let ((agenda-window-configuration (current-window-configuration)))
+      (org-agenda-switch-to)
+      (let ((url (car
+                  (mapcar (lambda (p) (replace-regexp-in-string (regexp-quote "\"") "" (org-entry-get (point) p)))
+                          (seq-filter (lambda (n) (string-suffix-p "url" n t))
+                                      (mapcar (lambda (e) (car e)) (org-entry-properties)))))))
+        (when url (browse-url  url)))
+      (set-window-configuration agenda-window-configuration)))
 
-(defun my/org-agenda-archive-at-point ()
-  "Browse  the url of the specified item."
-  (interactive)
-  (let ((agenda-window-configuration (current-window-configuration)))
-    (org-agenda-switch-to)
-    (my/org-archive)
-    (set-window-configuration agenda-window-configuration)))
+  (defun my/org-agenda-archive-at-point ()
+    "Browse  the url of the specified item."
+    (interactive)
+    (let ((agenda-window-configuration (current-window-configuration)))
+      (org-agenda-switch-to)
+      (my/org-archive)
+      (set-window-configuration agenda-window-configuration)))
 
-(defun my/org-agenda-export ()
-  "Export the content of org-agenda"
-  (interactive)
-  (org-eval-in-environment (org-make-parameter-alist
-                            `(org-agenda-span 'day
-                                              org-agenda-use-time-grid t
-                                              org-agenda-remove-tags t
-                                              org-agenda-window-setup 'nope))
-    (let* ((wins (current-window-configuration))
-           org-agenda-sticky)
+  (defun my/org-agenda-export ()
+    "Export the content of org-agenda"
+    (interactive)
+    (org-eval-in-environment (org-make-parameter-alist
+                              `(org-agenda-span 'day
+                                                org-agenda-use-time-grid t
+                                                org-agenda-remove-tags t
+                                                org-agenda-window-setup 'nope))
+      (let* ((wins (current-window-configuration))
+             org-agenda-sticky)
+        (save-excursion
+          (with-current-buffer
+              (get-buffer-create org-agenda-buffer-name)
+            (pop-to-buffer (current-buffer))
+            (org-agenda nil "t")
+            (let ((result (buffer-string)))
+              (with-temp-file "~/.agenda" (insert result)))))
+        (set-window-configuration wins))))
+
+  (defun my/org-refile (file headline &optional new-state)
+    "Refile item to the target FILE under the HEADLINE and set the NEW-STATE."
+    (let ((pos (save-excursion
+                 (find-file file)
+                 (org-find-exact-headline-in-buffer headline))))
       (save-excursion
-        (with-current-buffer
-            (get-buffer-create org-agenda-buffer-name)
-          (pop-to-buffer (current-buffer))
-          (org-agenda nil "t")
-          (let ((result (buffer-string)))
-            (with-temp-file "~/.agenda" (insert result)))))
-      (set-window-configuration wins))))
+        (org-refile nil nil (list headline file nil pos))
+        (org-refile-goto-last-stored)
+        (when new-state (org-todo new-state)))))
 
-(defun my/org-refile (file headline &optional new-state)
-  "Refile item to the target FILE under the HEADLINE and set the NEW-STATE."
-  (let ((pos (save-excursion
-               (find-file file)
-               (org-find-exact-headline-in-buffer headline))))
-    (save-excursion
-      (org-refile nil nil (list headline file nil pos))
-      (org-refile-goto-last-stored)
-      (when new-state (org-todo new-state)))))
+  (defun my/org-archive ()
+    "Mark item as complete and refile to archieve."
+    (interactive)
+      (save-window-excursion
+        (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-goto))
+        (let ((archive-headline (or (org-entry-get (point) "archive-headline") "Unsorted")))
+          (my/org-refile "~/Documents/org/para/archives.org" archive-headline "DONE")))
+        ;; Redo the agenda
+        (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-redo)))
 
-(defun my/org-archive ()
-  "Mark item as complete and refile to archieve."
+(defun my/org-auto-archive ()
+  "Archieve all completed items in my inbox."
   (interactive)
     (save-window-excursion
-      (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-goto))
-      (let ((archive-headline (or (org-entry-get (point) "archive-headline") "Unsorted")))
-        (my/org-refile "~/Documents/org/para/archives.org" archive-headline "DONE")))
-      ;; Redo the agenda
-      (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-redo)))
+      (find-file "/home/iocanel/Documents/org/inbox.org")
+      (goto-char 0)
+      (let ((pos))
+        (while (not (eq (point) pos))
+          (setq pos (point))
+          (outline-next-heading)
+          (let* ((line (buffer-substring-no-properties (bol) (eol)))
+                 (line-without-stars (replace-regexp-in-string "^[\\*]+ " "" line)))
+          (when (string-prefix-p "DONE" line-without-stars)
+            (my/org-archive)
+            (goto-char 0) ;; We need to go back from the beggining to avoid loosing entries
+      (save-buffer)))))))
 
 (use-package! org-super-agenda
   :commands (my/org-agenda-browse-at-point my/org-agenda-archive-at-point my/org-agenda-export my/org-archive my/org-refile)
@@ -241,7 +257,7 @@
  :map org-agenda-keymap
  "j" #'org-agenda-next-line
  "k" #'org-agenda-previous-line
- :map org-agenda-mode-ma
+ :map org-agenda-mode-map
  "j" #'org-agenda-next-line
  "k" #'org-agenda-previous-line
  :map org-super-agenda-header-map
