@@ -196,8 +196,12 @@
 (defun my/org-archive ()
   "Mark item as complete and refile to archieve."
   (interactive)
-  (let ((archive-headline (or (org-entry-get (point) "archive-headline") "Unsorted")))
-    (my/org-refile "~/Documents/org/para/archives.org" archive-headline "DONE")))
+    (save-window-excursion
+      (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-goto))
+      (let ((archive-headline (or (org-entry-get (point) "archive-headline") "Unsorted")))
+        (my/org-refile "~/Documents/org/para/archives.org" archive-headline "DONE")))
+      ;; Redo the agenda
+      (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-redo)))
 
 (use-package! org-super-agenda
   :commands (my/org-agenda-browse-at-point my/org-agenda-archive-at-point my/org-agenda-export my/org-archive my/org-refile)

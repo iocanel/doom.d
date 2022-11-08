@@ -119,6 +119,7 @@ I used to use `swiper`. Nowdays it seems that `consult-line is a better choice`.
 (map! "C-a" #'consult-line-multi)
 #+end_src
 
+
 **** Search in project
 
 There are a lot of different tools for searching in project:
@@ -332,8 +333,13 @@ and just remove the ".project" from the list:
   (defun my/org-archive ()
     "Mark item as complete and refile to archieve."
     (interactive)
-    (let ((archive-headline (or (org-entry-get (point) "archive-headline") "Unsorted")))
-      (my/org-refile "~/Documents/org/para/archives.org" archive-headline "DONE")))
+      (save-window-excursion
+        (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-goto))
+        (let ((archive-headline (or (org-entry-get (point) "archive-headline") "Unsorted")))
+          (my/org-refile "~/Documents/org/para/archives.org" archive-headline "DONE")))
+        ;; Redo the agenda
+        (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-redo)))
+
 #+end_src
 **** Super Agenda
 #+begin_src emacs-lisp
