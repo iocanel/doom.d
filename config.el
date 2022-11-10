@@ -139,48 +139,25 @@
                         '("~/Documents/org/quickmarks.org"
                           "~/Documents/org/github.org"
                           "~/Documents/org/habits.org"
-                          "~/Documents/org/nutrition.org")
-                          (directory-files-recursively "~/Documents/org/gtg" "\.org$")
+                          "~/Documents/org/nutrition.org"
+                          "~/Documents/org/roam/Inbox.org")
                           (directory-files-recursively "~/Documents/org/jira" "\.org$")))
 
-(defun my/org-agenda-browse-at-point ()
-    "Browse  the url of the specified item."
-    (interactive)
-    (let ((agenda-window-configuration (current-window-configuration)))
-      (org-agenda-switch-to)
-      (let ((url (car
-                  (mapcar (lambda (p) (replace-regexp-in-string (regexp-quote "\"") "" (org-entry-get (point) p)))
-                          (seq-filter (lambda (n) (string-suffix-p "url" n t))
-                                      (mapcar (lambda (e) (car e)) (org-entry-properties)))))))
-        (when url (browse-url  url)))
-      (set-window-configuration agenda-window-configuration)))
+(setq my/inbox-file "~/Documents/org/roam/Inbox.org")
+(setq my/archive-file "~/Documents/org/roam/Inbox.org")
 
-  (defun my/org-agenda-archive-at-point ()
-    "Browse  the url of the specified item."
-    (interactive)
-    (let ((agenda-window-configuration (current-window-configuration)))
-      (org-agenda-switch-to)
-      (my/org-archive)
-      (set-window-configuration agenda-window-configuration)))
-
-  (defun my/org-agenda-export ()
-    "Export the content of org-agenda"
-    (interactive)
-    (org-eval-in-environment (org-make-parameter-alist
-                              `(org-agenda-span 'day
-                                                org-agenda-use-time-grid t
-                                                org-agenda-remove-tags t
-                                                org-agenda-window-setup 'nope))
-      (let* ((wins (current-window-configuration))
-             org-agenda-sticky)
-        (save-excursion
-          (with-current-buffer
-              (get-buffer-create org-agenda-buffer-name)
-            (pop-to-buffer (current-buffer))
-            (org-agenda nil "t")
-            (let ((result (buffer-string)))
-              (with-temp-file "~/.agenda" (insert result)))))
-        (set-window-configuration wins))))
+(defun my/org-find-archive-target (tag)
+  "Find the archive target for the specified TAG.
+The idea is that the archive file has multiple headings one for each category.
+When a tagged item is archived it should go to an archive with at least one matching tag
+or to the 'Unsorted' when none is matched. Archives are expected to be tagged with the archive tag."
+  (or (car
+       (car
+        (org-ql-query
+          :select '(list (substring-no-properties (org-get-heading t t)))
+          :from my/archive-file
+          :where '(tags "archive" tag))))
+      "Unsorted"))
 
   (defun my/org-refile (file headline &optional new-state)
     "Refile item to the target FILE under the HEADLINE and set the NEW-STATE."
@@ -197,8 +174,10 @@
     (interactive)
       (save-window-excursion
         (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-goto))
-        (let ((archive-headline (or (org-entry-get (point) "archive-headline") "Unsorted")))
-          (my/org-refile "~/Documents/org/para/archives.org" archive-headline "DONE")))
+        (let* ((tags (org-get-tags))
+               (headline (if tags (car (mapcar (lambda (tag) (my/org-find-archive-target tag)) tags)) nil))
+               (archive-headline (or (org-entry-get (point) "archive-headline") headline)))
+          (my/org-refile my/archive-file archive-headline "DONE")))
         ;; Redo the agenda
         (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-redo)))
 
@@ -206,7 +185,7 @@
   "Archieve all completed items in my inbox."
   (interactive)
     (save-window-excursion
-      (find-file "/home/iocanel/Documents/org/inbox.org")
+      (find-file my/inbox-file)
       (goto-char 0)
       (let ((pos))
         (while (not (eq (point) pos))
@@ -218,6 +197,45 @@
             (my/org-archive)
             (goto-char 0) ;; We need to go back from the beggining to avoid loosing entries
       (save-buffer)))))))
+
+(defun my/org-agenda-browse-at-point ()
+  "Browse  the url of the specified item."
+  (interactive)
+  (let ((agenda-window-configuration (current-window-configuration)))
+    (org-agenda-switch-to)
+    (let ((url (car
+                (mapcar (lambda (p) (replace-regexp-in-string (regexp-quote "\"") "" (org-entry-get (point) p)))
+                        (seq-filter (lambda (n) (string-suffix-p "url" n t))
+                                    (mapcar (lambda (e) (car e)) (org-entry-properties)))))))
+      (when url (browse-url  url)))
+    (set-window-configuration agenda-window-configuration)))
+
+(defun my/org-agenda-archive-at-point ()
+  "Browse  the url of the specified item."
+  (interactive)
+  (let ((agenda-window-configuration (current-window-configuration)))
+    (org-agenda-switch-to)
+    (my/org-archive)
+    (set-window-configuration agenda-window-configuration)))
+
+(defun my/org-agenda-export ()
+  "Export the content of org-agenda"
+  (interactive)
+  (org-eval-in-environment (org-make-parameter-alist
+                            `(org-agenda-span 'day
+                                              org-agenda-use-time-grid t
+                                              org-agenda-remove-tags t
+                                              org-agenda-window-setup 'nope))
+    (let* ((wins (current-window-configuration))
+           org-agenda-sticky)
+      (save-excursion
+        (with-current-buffer
+            (get-buffer-create org-agenda-buffer-name)
+          (pop-to-buffer (current-buffer))
+          (org-agenda nil "t")
+          (let ((result (buffer-string)))
+            (with-temp-file "~/.agenda" (insert result)))))
+      (set-window-configuration wins))))
 
 (use-package! org-super-agenda
   :commands (my/org-agenda-browse-at-point my/org-agenda-archive-at-point my/org-agenda-export my/org-archive my/org-refile)
@@ -236,16 +254,15 @@
         org-agenda-start-on-weekday nil
         org-agenda-span 2
         org-agenda-files (append
-                          (directory-files-recursively "~/Documents/org/gtg" "\.org$")
                           (directory-files-recursively "~/Documents/org/jira" "\.org$")
-                          '("~/Documents/org/habits.org" "~/Documents/org/github.org" "~/Documents/org/nutrition.org"))
+                          '("~/Documents/org/roam/Inbox.org" "~/Documents/org/habits.org" "~/Documents/org/github.org" "~/Documents/org/nutrition.org"))
         ;; Refile
         org-refile-targets '(
                              ;; P.A.R.A
-                             ("~/Documents/org/para/projects.org" :maxlevel . 10)
-                             ("~/Documents/org/para/areas.org" :maxlevel . 10)
-                             ("~/Documents/org/para/resources.org" :maxlevel . 10)
-                             ("~/Documents/org/para/archives.org" :maxlevel . 10)))
+                             ("~/Documents/org/roam/Projects.org" :maxlevel . 10)
+                             ("~/Documents/org/roam/Areas.org" :maxlevel . 10)
+                             ("~/Documents/org/roam/Resources.org" :maxlevel . 10)
+                             ("~/Documents/org/roam/Archives.org" :maxlevel . 10)))
   :hook (org-agenda-mode . org-super-agenda-mode)
   :bind (:map org-agenda-mode-map
               ("C-a" . my/org-agenda-archive-at-point)
@@ -643,14 +660,14 @@ Comment format is '(//|#|;;)add: <reference id>'."
            ("cp" "Personal Event" entry (file  "~/Documents/org/calendars/personal.org") "* %?\n\n%^T\n\n:PROPERTIES:\n\n:END:\n\n")
 
            ("i" "Inbox")
-           ("iw" "Work Inbox" entry (file+olp "~/Documents/org/gtg/inbox.org" "Inbox" "Work") "* TODO %?\nSCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))\n%a\n" :prepend t)
-           ("ip" "Personal Inbox" entry (file+olp "~/Documents/org/gtg/inbox.org" "Inbox" "Personal") "* TODO %?\nSCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))\n%a\n" :prepend t)
+           ("iw" "Work Inbox" entry (file+olp "~/Documents/org/roam/Inbox.org" "Inbox" "Work") "* TODO %?\nSCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))\n%a\n" :prepend t)
+           ("ip" "Personal Inbox" entry (file+olp "~/Documents/org/roam/Inbox.org" "Inbox" "Personal") "* TODO %?\nSCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))\n%a\n" :prepend t)
 
            ("e" "Email Workflow")
-           ("ef" "Follow Up" entry (file+olp "~/Documents/org/gtg/inbox.org" "Inbox" "Email" "Follow Up") "* TODO Follow up with %:fromname on %a :email:\nSCHEDULED:%t\nDEADLINE: %(org-insert-time-stamp (org-read-date nil t \"+2d\"))\n\n%i" :immediate-finish t)
-           ("er" "Read Later" entry (file+olp "~/Documents/org/gtg/inbox.org" "Inbox" "Email" "Read Later") "* TODO Read %:subject :email: \nSCHEDULED:%t\nDEADLINE: %(org-insert-time-stamp (org-read-date nil t \"+2d\"))\n\n%a\n\n%i" :immediate-finish t)
+           ("ef" "Follow Up" entry (file+olp "~/Documents/org/raom/Inbox.org" "Inbox" "Email" "Follow Up") "* TODO Follow up with %:fromname on %a :email:\nSCHEDULED:%t\nDEADLINE: %(org-insert-time-stamp (org-read-date nil t \"+2d\"))\n\n%i" :immediate-finish t)
+           ("er" "Read Later" entry (file+olp "~/Documents/org/roam/Inbox.org" "Inbox" "Email" "Read Later") "* TODO Read %:subject :email: \nSCHEDULED:%t\nDEADLINE: %(org-insert-time-stamp (org-read-date nil t \"+2d\"))\n\n%a\n\n%i" :immediate-finish t)
 
-           ("p" "Project" entry (file+headline "~/Documents/org/para/projects.org" "Projects")(file "~/Documents/org/templates/project.orgtmpl"))
+           ("p" "Project" entry (file+headline "~/Documents/org/roam/Projects.org" "Projects")(file "~/Documents/org/templates/project.orgtmpl"))
            ("b" "BJJ")
            ("bm" "Moves" entry (file+olp "~/Documents/org/bjj/BJJ.org" "Moves")(file "~/Documents/org/templates/bjj-move.orgtmpl"))
            ("bs" "Submission" entry (file+olp "~/Documents/org/bjj/BJJ.org" "Techniques" "Submissions")(file "~/Documents/org/templates/bjj-submission.orgtmpl"))
