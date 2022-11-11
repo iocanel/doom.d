@@ -143,61 +143,6 @@
                           "~/Documents/org/roam/Inbox.org")
                           (directory-files-recursively "~/Documents/org/jira" "\.org$")))
 
-(setq my/inbox-file "~/Documents/org/roam/Inbox.org")
-(setq my/archive-file "~/Documents/org/roam/Inbox.org")
-
-(defun my/org-find-archive-target (tag)
-  "Find the archive target for the specified TAG.
-The idea is that the archive file has multiple headings one for each category.
-When a tagged item is archived it should go to an archive with at least one matching tag
-or to the 'Unsorted' when none is matched. Archives are expected to be tagged with the archive tag."
-  (or (car
-       (car
-        (org-ql-query
-          :select '(list (substring-no-properties (org-get-heading t t)))
-          :from my/archive-file
-          :where '(tags "archive" tag))))
-      "Unsorted"))
-
-  (defun my/org-refile (file headline &optional new-state)
-    "Refile item to the target FILE under the HEADLINE and set the NEW-STATE."
-    (let ((pos (save-excursion
-                 (find-file file)
-                 (org-find-exact-headline-in-buffer headline))))
-      (save-excursion
-        (org-refile nil nil (list headline file nil pos))
-        (org-refile-goto-last-stored)
-        (when new-state (org-todo new-state)))))
-
-  (defun my/org-archive ()
-    "Mark item as complete and refile to archieve."
-    (interactive)
-      (save-window-excursion
-        (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-goto))
-        (let* ((tags (org-get-tags))
-               (headline (if tags (car (mapcar (lambda (tag) (my/org-find-archive-target tag)) tags)) nil))
-               (archive-headline (or (org-entry-get (point) "archive-headline") headline)))
-          (my/org-refile my/archive-file archive-headline "DONE")))
-        ;; Redo the agenda
-        (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-redo)))
-
-(defun my/org-auto-archive ()
-  "Archieve all completed items in my inbox."
-  (interactive)
-    (save-window-excursion
-      (find-file my/inbox-file)
-      (goto-char 0)
-      (let ((pos))
-        (while (not (eq (point) pos))
-          (setq pos (point))
-          (outline-next-heading)
-          (let* ((line (buffer-substring-no-properties (bol) (eol)))
-                 (line-without-stars (replace-regexp-in-string "^[\\*]+ " "" line)))
-          (when (string-prefix-p "DONE" line-without-stars)
-            (my/org-archive)
-            (goto-char 0) ;; We need to go back from the beggining to avoid loosing entries
-      (save-buffer)))))))
-
 (defun my/org-agenda-browse-at-point ()
   "Browse  the url of the specified item."
   (interactive)
@@ -540,6 +485,60 @@ This function covnerts fuzzy anf file: links to id links."
         (message "Bad items: %s" bad))
       nil)))
 
+(setq my/inbox-file "~/Documents/org/roam/Inbox.org")
+(setq my/archive-file "~/Documents/org/roam/Archives.org")
+
+(defun my/org-find-archive-target (tag)
+  "Find the archive target for the specified TAG.
+The idea is that the archive file has multiple headings one for each category.
+When a tagged item is archived it should go to an archive with at least one matching tag
+or to the 'Unsorted' when none is matched. Archives are expected to be tagged with the archive tag."
+  (or (car
+       (car
+        (org-ql-query
+          :select '(list (substring-no-properties (org-get-heading t t)))
+          :from my/archive-file
+          :where `(tags "archive" ,tag))))
+      "Unsorted"))
+
+  (defun my/org-refile (file headline &optional new-state)
+    "Refile item to the target FILE under the HEADLINE and set the NEW-STATE."
+    (let ((pos (save-excursion
+                 (find-file file)
+                 (org-find-exact-headline-in-buffer headline))))
+      (save-excursion
+        (org-refile nil nil (list headline file nil pos))
+        (org-refile-goto-last-stored)
+        (when new-state (org-todo new-state)))))
+
+  (defun my/org-archive ()
+    "Mark item as complete and refile to archieve."
+    (interactive)
+      (save-window-excursion
+        (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-goto))
+        (let* ((tags (org-get-tags))
+               (headline (if tags (car (mapcar (lambda (tag) (my/org-find-archive-target tag)) tags)) nil)))
+          (my/org-refile my/archive-file headline "DONE")))
+        ;; Redo the agenda
+        (when (equal "*Org Agenda*" (buffer-name)) (org-agenda-redo)))
+
+(defun my/org-auto-archive ()
+  "Archieve all completed items in my inbox."
+  (interactive)
+    (save-window-excursion
+      (find-file my/inbox-file)
+      (goto-char 0)
+      (let ((pos))
+        (while (not (eq (point) pos))
+          (setq pos (point))
+          (outline-next-heading)
+          (let* ((line (buffer-substring-no-properties (bol) (eol)))
+                 (line-without-stars (replace-regexp-in-string "^[\\*]+ " "" line)))
+          (when (string-prefix-p "DONE" line-without-stars)
+            (my/org-archive)
+            (goto-char 0) ;; We need to go back from the beggining to avoid loosing entries
+      (save-buffer)))))))
+
 (after! 'org
 (org-babel-do-load-languages 'org-babel-load-languages '((shell .t)
                                                            (ruby . t)
@@ -660,12 +659,12 @@ Comment format is '(//|#|;;)add: <reference id>'."
            ("cp" "Personal Event" entry (file  "~/Documents/org/calendars/personal.org") "* %?\n\n%^T\n\n:PROPERTIES:\n\n:END:\n\n")
 
            ("i" "Inbox")
-           ("iw" "Work Inbox" entry (file+olp "~/Documents/org/roam/Inbox.org" "Inbox" "Work") "* TODO %?\nSCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))\n%a\n" :prepend t)
-           ("ip" "Personal Inbox" entry (file+olp "~/Documents/org/roam/Inbox.org" "Inbox" "Personal") "* TODO %?\nSCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))\n%a\n" :prepend t)
+           ("iw" "Work Inbox" entry (file+olp "~/Documents/org/roam/Inbox.org" "Work") "* TODO %?\nSCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))\n%a\n" :prepend t)
+           ("ip" "Personal Inbox" entry (file+olp "~/Documents/org/roam/Inbox.org" "Personal") "* TODO %?\nSCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))\n%a\n" :prepend t)
 
            ("e" "Email Workflow")
-           ("ef" "Follow Up" entry (file+olp "~/Documents/org/raom/Inbox.org" "Inbox" "Email" "Follow Up") "* TODO Follow up with %:fromname on %a :email:\nSCHEDULED:%t\nDEADLINE: %(org-insert-time-stamp (org-read-date nil t \"+2d\"))\n\n%i" :immediate-finish t)
-           ("er" "Read Later" entry (file+olp "~/Documents/org/roam/Inbox.org" "Inbox" "Email" "Read Later") "* TODO Read %:subject :email: \nSCHEDULED:%t\nDEADLINE: %(org-insert-time-stamp (org-read-date nil t \"+2d\"))\n\n%a\n\n%i" :immediate-finish t)
+           ("ef" "Follow Up" entry (file+olp "~/Documents/org/raom/Inbox.org" "Email" "Follow Up") "* TODO Follow up with %:fromname on %a :email:\nSCHEDULED:%t\nDEADLINE: %(org-insert-time-stamp (org-read-date nil t \"+2d\"))\n\n%i" :immediate-finish t)
+           ("er" "Read Later" entry (file+olp "~/Documents/org/roam/Inbox.org" "Email" "Read Later") "* TODO Read %:subject :email: \nSCHEDULED:%t\nDEADLINE: %(org-insert-time-stamp (org-read-date nil t \"+2d\"))\n\n%a\n\n%i" :immediate-finish t)
 
            ("p" "Project" entry (file+headline "~/Documents/org/roam/Projects.org" "Projects")(file "~/Documents/org/templates/project.orgtmpl"))
            ("b" "BJJ")
