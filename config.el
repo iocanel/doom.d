@@ -485,6 +485,38 @@ This function covnerts fuzzy anf file: links to id links."
         (message "Bad items: %s" bad))
       nil)))
 
+(use-package! org-transclusion
+              :after org
+              :init
+              (map!
+               :leader
+               :prefix "n"
+               :desc "Org Transclusion Mode" "t" #'org-transclusion-mode))
+
+(defun my/org-current-level ()
+  "Get the level of the current heading."
+  (save-excursion
+    (outline-previous-heading)
+    (let* ((line (buffer-substring-no-properties (bol) (eol)))
+           (stars (car (split-string line " ")))
+           (level (length stars)))
+           level)))
+
+(defun my/org-roam-transclusion-insert ()
+  "Insert / Embed an node using org-transclusion."
+  (interactive)
+  (let ((level (my/org-current-level)))
+    (insert "#+transclude: ")
+    (org-roam-node-insert)
+    (when level (insert (format " :level %s" level)))
+    (org-transclusion-add)))
+
+(map! :map org-mode-map
+      (:leader
+       (:prefix "n"
+                (:prefix "r"
+                 :desc "Transclude an org-roam node" "t" #'my/org-roam-transclusion-insert))))
+
 (setq my/inbox-file "~/Documents/org/roam/Inbox.org")
 (setq my/archive-file "~/Documents/org/roam/Archives.org")
 
@@ -561,16 +593,16 @@ or to the 'Unsorted' when none is matched. Archives are expected to be tagged wi
 (defun my/org-tangle-prepare ()
   "Replace the comment references to standard noweb ones.
 Comment format is '(//|#|;;)add: <reference id>'."
-  (setq my/last-tangle-source-buffer (current-buffer))
-  (setq my/last-tangle-source-buffer-point (point))
-        (get-buffer-create "**tangle**")
-  (copy-to-buffer "**tangle**" (point-min) (point-max))
-  (goto-char (point-min))
-  (while (re-search-forward "//add:\\([a-zA-Z0-9_-]+\\)" nil t)
-    (let* ((text (buffer-substring (match-beginning 1) (match-end 1)))
-           (new-text (format "<<%s>>" text)))
-      (replace-match new-text))))
-
+  (when (not buffer-read-only)
+    (setq my/last-tangle-source-buffer (current-buffer))
+    (setq my/last-tangle-source-buffer-point (point))
+    (get-buffer-create "**tangle**")
+    (copy-to-buffer "**tangle**" (point-min) (point-max))
+    (goto-char (point-min))
+    (while (re-search-forward "//add:\\([a-zA-Z0-9_-]+\\)" nil t)
+      (let* ((text (buffer-substring-no-properties (match-beginning 1) (match-end 1)))
+             (new-text (format "<<%s>>" text)))
+        (replace-match new-text)))))
 
 (defun my/org-tangle-restore (&rest args)
   "Restore the original buffer as it was before 'my/org-tangle-prepare'."

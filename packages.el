@@ -64,6 +64,7 @@
 (package! org-sync :recipe (:host github :repo "arbox/org-sync" :files ("org-sync.el" "org-sync-github.el")))
 (package! org-github-issues :recipe (:host github :repo "iocanel/org-github-issues" :branch "pr-support"))
 (package! org-jira :recipe (:host github :repo "ahungry/org-jira"))
+(package! org-transclusion)
 
 ;; Email
 (package! mu4e :recipe (:host github :repo "djcb/mu" :branch "v1.8.9" :files (:defaults "mu4e/*.el")))

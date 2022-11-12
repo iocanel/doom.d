@@ -665,6 +665,49 @@ This function covnerts fuzzy anf file: links to id links."
 ***** org-roam-extract-subtree is creating empty file
 It turns out that this was caused by doomemacs file template functionality that was over writing the extracted node file.
 
+*** Org Transclusion
+Plugin to `embed` different org blocks by ID.
+
+**** Installation
+
+#+begin_src emacs-lisp
+(use-package! org-transclusion
+              :after org
+              :init
+              (map!
+               :leader
+               :prefix "n"
+               :desc "Org Transclusion Mode" "t" #'org-transclusion-mode))
+#+end_src
+
+**** Roam integration
+
+#+begin_src emacs-lisp
+(defun my/org-current-level ()
+  "Get the level of the current heading."
+  (save-excursion
+    (outline-previous-heading)
+    (let* ((line (buffer-substring-no-properties (bol) (eol)))
+           (stars (car (split-string line " ")))
+           (level (length stars)))
+           level)))
+
+(defun my/org-roam-transclusion-insert ()
+  "Insert / Embed an node using org-transclusion."
+  (interactive)
+  (let ((level (my/org-current-level)))
+    (insert "#+transclude: ")
+    (org-roam-node-insert)
+    (when level (insert (format " :level %s" level)))
+    (org-transclusion-add)))
+
+(map! :map org-mode-map
+      (:leader
+       (:prefix "n"
+                (:prefix "r"
+                 :desc "Transclude an org-roam node" "t" #'my/org-roam-transclusion-insert))))
+#+end_src
+
 *** Getting things done
 To implement my `getting things done workflow` I am going to use two main files:
 
