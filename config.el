@@ -1,5 +1,7 @@
 ;;; -*- lexical-binding: t; -*-
 
+(general-auto-unbind-keys)
+
 (setq gc-cons-threshold 100000000
       read-process-output-max (* 1024 1024))
 
@@ -593,16 +595,16 @@ or to the 'Unsorted' when none is matched. Archives are expected to be tagged wi
 (defun my/org-tangle-prepare ()
   "Replace the comment references to standard noweb ones.
 Comment format is '(//|#|;;)add: <reference id>'."
-  (when (not buffer-read-only)
-    (setq my/last-tangle-source-buffer (current-buffer))
-    (setq my/last-tangle-source-buffer-point (point))
-    (get-buffer-create "**tangle**")
-    (copy-to-buffer "**tangle**" (point-min) (point-max))
-    (goto-char (point-min))
-    (while (re-search-forward "//add:\\([a-zA-Z0-9_-]+\\)" nil t)
-      (let* ((text (buffer-substring-no-properties (match-beginning 1) (match-end 1)))
-             (new-text (format "<<%s>>" text)))
-        (replace-match new-text)))))
+  (setq my/last-tangle-source-buffer (current-buffer))
+  (setq my/last-tangle-source-buffer-point (point))
+        (get-buffer-create "**tangle**")
+  (copy-to-buffer "**tangle**" (point-min) (point-max))
+  (goto-char (point-min))
+  (while (re-search-forward "//add:\\([a-zA-Z0-9_-]+\\)" nil t)
+    (let* ((text (buffer-substring (match-beginning 1) (match-end 1)))
+           (new-text (format "<<%s>>" text)))
+      (replace-match new-text))))
+
 
 (defun my/org-tangle-restore (&rest args)
   "Restore the original buffer as it was before 'my/org-tangle-prepare'."
@@ -1228,6 +1230,51 @@ This utility is meant to help indenity thoue."
   (my/org-hugo-set-bundle)
   (my/org-hugo-set-export-file-name))
 
+(use-package! mpv)
+
+(defun org-mpv-complete-link (&optional arg)
+    "Link completion for mpv."
+    (replace-regexp-in-string "file:" "mpv:" (org-link-complete-file arg) t t))
+(org-link-set-parameters "mpv" :follow #'mpv-play :complete #'org-mpv-complete-link)
+
+(defun my/mpv-insert-playback-position-in-org ()
+  "Isert the playback position as org timer"
+  (interactive)
+  (mpv-insert-playback-position t))
+
+(defun my/mpv-timestamp-apply-offset (offset)
+  "Apply the specified OFFSET to the current timestamp."
+    (let* ((line (buffer-substring-no-properties (bol) (eol)))
+           (hhmmss (replace-regexp-in-string "[ -]+" "" (car (split-string line "::"))))
+           (seconds (org-timer-hms-to-secs hhmmss))
+           (new-seconds (+ offset seconds))
+           (new-hhmmss (org-timer-secs-to-hms new-seconds)))
+      (message "line: %s hhmmss: %s - seconds: %s - new seconds: %s - new hhmmss: %s" line hhmmss seconds new-seconds new-hhmmss)
+      (replace-string-in-region hhmmss new-hhmmss (bol) (eol))
+      (save-excursion
+        (goto-char (bol))
+        (search-forward-regexp "[0-9]+")
+        (org-open-at-point))))
+
+(defun my/mpv-timestamp-inc ()
+  "Increase the timestamp in the current line by 1."
+  (interactive)
+  (my/mpv-timestamp-apply-offset 1))
+
+(defun my/mpv-timestamp-dec ()
+  "Decrease the timestamp in the current line by 1."
+  (interactive)
+  (my/mpv-timestamp-apply-offset -1))
+
+
+(add-hook 'org-metareturn-hook #'my/mpv-insert-playback-position-in-org)
+(add-hook 'org-open-at-point-functions #'mpv-seek-to-position-at-point)
+
+(map! :leader
+      "+" #'my/mpv-timestamp-inc
+      "=" #'my/mpv-timestamp-inc
+      "-" #'my/mpv-timestamp-dec)
+
 ;;;###autoload
 (defun my/next-code-block ()
   "Jump to the next code block."
@@ -1363,24 +1410,6 @@ This utility is meant to help indenity thoue."
   :commands (qm-init qm-avatar-by-name qm-logo-by-name qm-url-by-name)
   :config
   (qm-init))
-
-(use-package! openwith
-  :config
-  (setq openwith-associations
-        (list
-         (list (openwith-make-extension-regexp
-                '("mpg" "mpeg" "mp3" "mp4"
-                  "avi" "wmv" "wav" "mov" "flv"
-                  "ogm" "ogg" "mkv"))
-               "mpv"
-               '(file))
-         (list (openwith-make-extension-regexp
-                '("xbm" "pbm" "pgm" "ppm" "pnm"
-                  "png" "gif" "bmp" "tif" "jpeg" "jpg"))
-               "geeqie"
-               '(file))
-         ))
-(openwith-mode 1))
 
 (use-package! mu4e
   :config

@@ -78,6 +78,8 @@
 (package! quickmarks :recipe (:host github :repo "iocanel/quickmarks.el" :files ("quickmarks.el")))
 (package! imgflip :recipe (:host github :repo "iocanel/imgflip.el" :files ("imgflip.el")))
 (package! openwith)
+(package! mpv)
+
 ;;
 ;; EAF (Emacs Application Framework)
 ;;

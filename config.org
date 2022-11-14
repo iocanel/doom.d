@@ -6,6 +6,12 @@
  #+begin_src emacs-lisp
 ;;; -*- lexical-binding: t; -*-
  #+end_src
+*** Auto unbind keys
+
+ #+begin_src emacs-lisp
+(general-auto-unbind-keys)
+ #+end_src
+
 *** Performance
 #+begin_src emacs-lisp
 (setq gc-cons-threshold 100000000
@@ -1531,6 +1537,56 @@ So, I rolled my own.
   (my/org-hugo-set-export-file-name))
 #+end_src
 
+*** Video notes
+**** MPV
+#+begin_src emacs-lisp
+(use-package! mpv)
+
+(defun org-mpv-complete-link (&optional arg)
+    "Link completion for mpv."
+    (replace-regexp-in-string "file:" "mpv:" (org-link-complete-file arg) t t))
+(org-link-set-parameters "mpv" :follow #'mpv-play :complete #'org-mpv-complete-link)
+
+(defun my/mpv-insert-playback-position-in-org ()
+  "Isert the playback position as org timer"
+  (interactive)
+  (mpv-insert-playback-position t))
+
+(defun my/mpv-timestamp-apply-offset (offset)
+  "Apply the specified OFFSET to the current timestamp."
+    (let* ((line (buffer-substring-no-properties (bol) (eol)))
+           (hhmmss (replace-regexp-in-string "[ -]+" "" (car (split-string line "::"))))
+           (seconds (org-timer-hms-to-secs hhmmss))
+           (new-seconds (+ offset seconds))
+           (new-hhmmss (org-timer-secs-to-hms new-seconds)))
+      (message "line: %s hhmmss: %s - seconds: %s - new seconds: %s - new hhmmss: %s" line hhmmss seconds new-seconds new-hhmmss)
+      (replace-string-in-region hhmmss new-hhmmss (bol) (eol))
+      (save-excursion
+        (goto-char (bol))
+        (search-forward-regexp "[0-9]+")
+        (org-open-at-point))))
+
+(defun my/mpv-timestamp-inc ()
+  "Increase the timestamp in the current line by 1."
+  (interactive)
+  (my/mpv-timestamp-apply-offset 1))
+
+(defun my/mpv-timestamp-dec ()
+  "Decrease the timestamp in the current line by 1."
+  (interactive)
+  (my/mpv-timestamp-apply-offset -1))
+
+
+(add-hook 'org-metareturn-hook #'my/mpv-insert-playback-position-in-org)
+(add-hook 'org-open-at-point-functions #'mpv-seek-to-position-at-point)
+
+(map! :leader
+      "+" #'my/mpv-timestamp-inc
+      "=" #'my/mpv-timestamp-inc
+      "-" #'my/mpv-timestamp-dec)
+#+end_src
+
+
 *** Editing
 **** Code Block Navigation and Evaluation
 ***** Functions
@@ -1614,7 +1670,7 @@ Credits: https://ivanaf.com/animating_gifs_in_orgmode.html
 
 ** Tools
 *** Language Server Protocol (LSP)
-****  LSP tuning
+**** LSP tuning
 
 Following tips from: https://emacs-lsp.github.io/lsp-mode/page/performance/
 
@@ -1730,7 +1786,13 @@ Imgflip API client for Emacs Lisp with Yasnippet integration
   (qm-init))
 #+end_src
 
-*** Openwith
+*** COMMENT Openwith
+
+Openwith allows opening buffer with external programs.
+It is a great solution to open media files.
+However, it can cause unexpected issue when you inline image in org-mode.
+Because of this and the fact that I am experimenting with `mpv.el` for video
+files, this is temporarily commented out.
 
 #+begin_src emacs-lisp
 (use-package! openwith
