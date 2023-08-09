@@ -1,0 +1,10 @@
+# -*- mode: snippet -*-
+# name: planuml blcok
+# key: puml
+# --
+#+begin_src plantuml $1.png
+@startuml
+skinparam handwritten true
+$0
+@enduml
+#+end_src

@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: link
+# key: lnk
+# --
+[[${1:`(my/get-url-from-clipboard)`}][${2:Link Description}]$0 .

@@ -53,6 +53,13 @@
 ;; Core
 ;;
 
+;; Asciidoc
+(package! adoc-mode)
+(package! org-asciidoc :recipe (:host github :repo "yashi/org-asciidoc" :files ("ox-asciidoc.el")))
+
+;; Helm
+(package! helm :pin "1003539c2ec66e7697903f4b4cb354adea70040e")
+
 ;; Dired
 (package! dired-subtree)
 
@@ -62,15 +69,18 @@
 (package! org-super-agenda)
 (package! org-babel-eval-in-repl)
 (package! org-sync :recipe (:host github :repo "arbox/org-sync" :files ("org-sync.el" "org-sync-github.el")))
-(package! org-github-issues :recipe (:host github :repo "iocanel/org-github-issues" :branch "pr-support"))
+(package! org-github-issues :recipe (:host github :repo "iensu/org-github-issues"))
 (package! org-jira :recipe (:host github :repo "ahungry/org-jira"))
 (package! org-transclusion)
 
 ;; Email
-(package! mu4e :recipe (:host github :repo "djcb/mu" :branch "v1.8.9" :files (:defaults "mu4e/*.el")))
+;;(package! mu4e :recipe (:host github :repo "djcb/mu" :branch "v1.8.13" :files (:defaults "mu4e/*.el")))
 
 ;; IDE
 (package! idee :recipe (:host github :repo "iocanel/idee" :files (:defaults "*.el")))
+
+;; Copilot
+(package! copilot :recipe (:host github :repo "zerolfx/copilot.el" :files ("dist" "copilot.el")))
 
 ;;
 ;; Utils
@@ -79,6 +89,14 @@
 (package! imgflip :recipe (:host github :repo "iocanel/imgflip.el" :files ("imgflip.el")))
 (package! openwith)
 (package! mpv)
+
+;;
+;; OpenAI
+;;
+(package! openai :recipe (:host github :repo "emacs-openai/openai"))
+(package! chatgpt :recipe (:host github :repo "emacs-openai/chatgpt"))
+(package! codegpt :recipe (:host github :repo "emacs-openai/codegpt"))
+
 
 ;;
 ;; EAF (Emacs Application Framework)
@@ -96,3 +114,8 @@
   (package! ctable :recipe (:host github :repo "kiwanami/emacs-ctable"))
   (package! deferred :recipe (:host github :repo "kiwanami/emacs-deferred"))
   (package! epc :recipe (:host github :repo "kiwanami/emacs-epc")))
+
+;;
+;; Troubleshooting
+;;
+(package! afternoon-theme :recipe (:host github :repo "osener/emacs-afternoon-theme"))

@@ -99,9 +99,9 @@
        (eval +overlay)     ; run code, run (also, repls)
        gist              ; interacting with github gists
        lookup              ; navigate your code and its documentation
-       lsp               ; M-x vscode
+       (lsp +eglot)               ; M-x vscode
        (magit            ; a git porcelain for Emacs
-        +forge)
+        )
        make              ; run make tasks from Emacs
        pass              ; password manager for nerds
        pdf               ; pdf enhancements
@@ -207,3 +207,10 @@
        :config
        literate
        (default +bindings +smartparens))
+
+;;
+;; Benchmarking init: https://github.com/doomemacs/doomemacs/issues/4498
+;;
+(when init-file-debug
+  (require 'benchmark-init)
+  (add-hook 'doom-first-input-hook #'benchmark-init/deactivate))

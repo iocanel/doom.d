@@ -2,6 +2,8 @@
 
 (general-auto-unbind-keys)
 
+(map! [escape] #'keyboard-quit)
+
 (setq gc-cons-threshold 100000000
       read-process-output-max (* 1024 1024))
 
@@ -87,6 +89,12 @@
 
 (map! "C-c i g" #'+vertico/project-search)
 
+(map! :leader
+      "s b" #'my/consult-line-with-selection
+      "s m" #'consult-mark
+      "s M" #'consult-bookmark
+      "s r" #'vertico-repeat)
+
 (setq display-line-numbers-type 'relative)
 
 (map!
@@ -116,12 +124,50 @@
 
 (map! :map dired-mode-map "S-<tab>" #'my/dired-expand-all)
 
+(map! (:leader "p a" #'projectile-add-known-project))
+(map! (:leader "p p" #'projectile-switch-project))
+(map! (:leader "SPC" #'projectile-find-file-dwim))
+
 (after! projectile
   (setq! projectile-project-root-functions '(projectile-root-local projectile-root-bottom-up))
   (setq! projectile-project-root-files-bottom-up
       (append '(".projectile" ".git"))))
 
 (setq! auth-sources '("~/.authinfo" "~/.authinfo.gpg" "~/.netrc"))
+
+(setq! +doom-dashboard-menu-sections
+  '(("Reload last session"
+     :icon (all-the-icons-octicon "history" :face 'doom-dashboard-menu-title)
+     :when (cond ((modulep! :ui workspaces)
+                  (file-exists-p (expand-file-name persp-auto-save-fname persp-save-dir)))
+                 ((require 'desktop nil t)
+                  (file-exists-p (desktop-full-file-name))))
+     :face (:inherit (doom-dashboard-menu-title bold))
+     :action doom/quickload-session)
+    ("Open agenda"
+     :icon (all-the-icons-octicon "calendar" :face 'doom-dashboard-menu-title)
+     :when (fboundp 'org-agenda)
+     :action org-agenda)
+    ("Open roam"
+     :icon (all-the-icons-octicon "book" :face 'doom-dashboard-menu-title)
+     :when (fboundp 'org-roam-node-find)
+     :action org-roam-node-find)
+    ("Recently opened files"
+     :icon (all-the-icons-octicon "file-text" :face 'doom-dashboard-menu-title)
+     :action recentf-open-files)
+    ("Open project"
+     :icon (all-the-icons-octicon "briefcase" :face 'doom-dashboard-menu-title)
+     :action projectile-switch-project)
+    ("Jump to bookmark"
+     :icon (all-the-icons-octicon "bookmark" :face 'doom-dashboard-menu-title)
+     :action bookmark-jump)
+    ("Open private configuration"
+     :icon (all-the-icons-octicon "tools" :face 'doom-dashboard-menu-title)
+     :when (file-directory-p doom-user-dir)
+     :action doom/open-private-config)
+    ("Open documentation"
+     :icon (all-the-icons-octicon "book" :face 'doom-dashboard-menu-title)
+     :action doom/help)))
 
 (defadvice! horizontal-split-and-follow (&rest args)
   "Switch focus to the newly created window when splitting horizontally."
@@ -231,6 +277,13 @@
 (setq! org-roam-directory "~/Documents/org/roam")
 
 (setq! org-roam-capture-templates '(("d" "default" plain "%?" :target (file+head "${title}.org" "#+title: ${title}\n") :unnarrowed t)))
+(setq! org-roam-dailies-capture-templates `(("d" "default" entry "* %?" :target (file+head "%<%Y-%m-%d>.org"
+                                                                                 ,(concat "#+title: %<%Y-%m-%d>\n"
+                                                                                         "* Daily Checklist\n"
+                                                                                         "** TODO Log weight\n"
+                                                                                         "** TODO Check emails\n"
+                                                                                         "** TODO Check github issues / pull requests"
+                                                                                         )))))
 
 (defun my/org-roam-extract-subtree-and-insert ()
   "Convert current subtree at point to a node, extract it into a new file and insert a ref to it."
@@ -510,7 +563,7 @@ This function covnerts fuzzy anf file: links to id links."
   (let ((level (my/org-current-level)))
     (insert "#+transclude: ")
     (org-roam-node-insert)
-    (when level (insert (format " :level %s" level)))
+    (when level (insert (format " :level %s" (+ 1 level))))
     (org-transclusion-add)))
 
 (map! :map org-mode-map
@@ -577,6 +630,7 @@ or to the 'Unsorted' when none is matched. Archives are expected to be tagged wi
 (org-babel-do-load-languages 'org-babel-load-languages '((shell .t)
                                                            (ruby . t)
                                                            (java . t)
+                                                           (javascript . t)
                                                            (typescript . t)
                                                            (plantuml . t))))
 ;;
@@ -617,7 +671,7 @@ Comment format is '(//|#|;;)add: <reference id>'."
 (advice-add 'org-babel-tangle :after #'my/org-tangle-restore)
 
 (require 'ob-shell)
-(use-package org-babel-eval-in-repl
+(use-package! org-babel-eval-in-repl
   :custom (eir-shell-type 'vterm)
   :bind (:map org-mode-map
               ("M-e" . ober-eval-block-in-repl)))
@@ -685,6 +739,9 @@ Comment format is '(//|#|;;)add: <reference id>'."
       ;; return expanded body
       (buffer-string))))
 
+(setq! plantuml-default-exec-mode 'jar)
+(when (not (file-exists-p plantuml-jar-path)) (plantuml-download-jar))
+
 (after! org
   (setq! org-capture-templates
          '(
@@ -701,6 +758,8 @@ Comment format is '(//|#|;;)add: <reference id>'."
            ("er" "Read Later" entry (file+olp "~/Documents/org/roam/Inbox.org" "Email" "Read Later") "* TODO Read %:subject :email: \nSCHEDULED:%t\nDEADLINE: %(org-insert-time-stamp (org-read-date nil t \"+2d\"))\n\n%a\n\n%i" :immediate-finish t)
 
            ("p" "Project" entry (file+headline "~/Documents/org/roam/Projects.org" "Projects")(file "~/Documents/org/templates/project.orgtmpl"))
+           ("d" "System design" entry (file+headline "~/Documents/org/system-design/system-design.org" "System Design") (file "~/Documents/org/templates/system-design.orgtmpl"))
+
            ("b" "BJJ")
            ("bm" "Moves" entry (file+olp "~/Documents/org/bjj/BJJ.org" "Moves")(file "~/Documents/org/templates/bjj-move.orgtmpl"))
            ("bs" "Submission" entry (file+olp "~/Documents/org/bjj/BJJ.org" "Techniques" "Submissions")(file "~/Documents/org/templates/bjj-submission.orgtmpl"))
@@ -761,20 +820,31 @@ Comment format is '(//|#|;;)add: <reference id>'."
   "Require, configure and call org-drill."
   (interactive)
   (require 'org-drill)
-  (setq org-drill-scope 'directory)
-  (find-file "~/Documents/org/index.org")
-  (org-drill)
-  (org-save-all-org-buffers))
+  (let ((org-drill-scope 'directory))
+    (find-file "~/Documents/org/roam/index.org")
+    (org-drill)
+    (org-save-all-org-buffers)))
 
 ;;;###autoload
 (defun my/org-drill-buffer ()
   "Require, configure and call org-drill."
   (interactive)
   (require 'org-drill)
-  (setq org-drill-scope 'file)
-  (org-drill)
-  (org-save-all-org-buffers))
+  (let  ((org-drill-scope 'file))
+    (org-drill)
+    (org-save-all-org-buffers)))
 :init (setq org-drill-scope 'directory)
+
+;;;###autoload
+(defun my/org-drill-match ()
+  "Require, configure and call org-drill."
+  (interactive)
+  (require 'org-drill)
+  (let ((org-drill-scope 'directory)
+        (org-drill-match (read-string "Please specify a filter (e.g. tag, property etc) for the drill: ")))
+    (find-file "~/Documents/org/roam/index.org")
+    (org-drill)
+    (org-save-all-org-buffers)))
 
 (use-package! org-drill :after org)
 
@@ -783,51 +853,67 @@ Comment format is '(//|#|;;)add: <reference id>'."
   :config
   (setq org-habit-following-days 7
         org-habit-preceding-days 35
-        org-habit-show-habits t))
+        org-habit-show-habits t)
+  (defvar my/org-habit-capture-alist '() "An association list that maps capture keys to habit headings")
 
-(require 'org-habit)
-(defun my/org-habit-mark (heading)
-  (let* ((habits-file "/home/iocanel/Documents/org/habits.org")
-         (original (current-buffer))
-         (buf (find-file habits-file)))
+  (defun my/org-habit-check-captured ()
+    "Check if there is a habit matching that latest captured item and mark it as done."
+    (message "Checking for habits linked to the captured template ...")
+    (let* ((key  (plist-get org-capture-plist :key))
+           (habit (cdr (assoc key my/org-habit-capture-alist))))
+      (if habit
+          (progn
+            (message "Found linked habit:%s" habit)
+            (when (not org-note-abort) (my/org-habit-mark habit)))
+        (message "No habit found for capture template with key:%s." key))))
+
+  (defun my/org-habit-mark (heading)
     (save-excursion
-      (with-current-buffer buf
-        (goto-char (point-min))
-        (re-search-forward (concat "TODO " heading ".*:habit:"))
-        (org-habit-parse-todo)
-        (org-todo)
-        (save-buffer)))
-    (message "Switching back to: %s" original)
-    (switch-to-buffer original t t)))
+      (let* ((habits-file "/home/iocanel/Documents/org/habits.org")
+             (original (current-buffer))
+             (buf (find-file habits-file)))
+        (with-current-buffer buf
+          (goto-char (point-min))
+          (re-search-forward (concat "TODO " heading ".*:habit:"))
+          (org-habit-parse-todo)
+          (org-todo 'done)
+          (save-buffer t))
+      (switch-to-buffer original t t))))
 
-(defvar my/org-habit-capture-alist '() "An association list that maps capture keys to habit headings")
+  (advice-add 'org-drill :after (lambda() (my/org-habit-mark "Org Drill")))
+  (add-hook 'org-capture-after-finalize-hook 'my/org-habit-check-captured))
 
- (defun my/org-habit-check-captured ()
-   "Check if there is a habit matching that latest captured item and mark it as done."
-   (message "Checking for habits linked to the captured template ...")
-   (let* ((key  (plist-get org-capture-plist :key))
-          (habit (cdr (assoc key my/org-habit-capture-alist))))
-     (if habit
-         (progn
-           (message "Found linked habit:%s" habit)
-           (when (not org-note-abort) (my/org-habit-mark habit)))
-       (message "No habit found for capture template with key:%s." key))))
-
- (add-hook 'org-capture-after-finalize-hook 'my/org-habit-check-captured)
-
-(advice-add 'org-drill :after (lambda() (my/org-habit-mark "Org Drill")))
-
-(defun my/org-habit-is-habbit-at-point()
-  "Utility to troubleshoot integrity of a habit.
-It's often possible to end up with habits that are not properly structured.
-This utility is meant to help indenity thoue."
+(defun my/dired-file-as-plantuml-link-to-clipboard ()
+  "Create an Org link to the currently selected file in Dired and copy it to the clipboard."
   (interactive)
-  (message "Habit at point:%s." (org-is-habit-p (point))))
+  (let* ((file (dired-get-filename))
+         (name (file-name-base file))
+         (cleaned-name (replace-regexp-in-string "^[0-9]+\\(\\.\\)[[:blank:]]+" "" name))
+         (extension (file-name-extension file))
+         (link (format "[[\"file:%s\" %s]]"  file cleaned-name)))
+    (kill-new link)
+    (message "Plantuml link to file copied to clipboard: %s" file)))
+
+(defun my/dired-file-as-org-link-to-clipboard ()
+  "Create an Org link to the currently selected file in Dired and copy it to the clipboard."
+  (interactive)
+  (let* ((file (dired-get-filename))
+         (name (file-name-base file))
+         (cleaned-name (replace-regexp-in-string "^[0-9]+\\(\\.\\)[[:blank:]]+" "" name))
+         (extension (file-name-extension file))
+         (protocol (if (string-match-p "\\(\\.\\(mp4\\|mkv\\|avi\\)\\)$" file) "mpv" "file"))
+         (link (format "[[%s:%s][%s]]" protocol file cleaned-name)))
+    (kill-new link)
+    (message "Org link to file copied to clipboard: %s" file)))
+
+(after! dired
+(define-key dired-mode-map (kbd "C-c o l") 'my/dired-file-as-org-link-to-clipboard)
+(define-key dired-mode-map (kbd "C-c u l") 'my/dired-file-as-plantuml-link-to-clipboard))
 
 (use-package! org-github-issues
   :init
   (defvar my/github-repositories nil "The list of watch repositories by org-github-issues")
-  :commands (org-github-issues-fetch-all my/org-github-issues-eww-at-point my/org-github-issues--show-open-workspace-issues)
+  :commands (org-github-issues-sync-all my/org-github-issues-eww-at-point my/org-github-issues--show-open-workspace-issues)
   :config
   (setq
    gh-user "iocanel"
@@ -1186,6 +1272,9 @@ This utility is meant to help indenity thoue."
                        org-tree-slide-mode
                        'headline))))
 
+(use-package! adoc-mode)
+;;(use-package! org-asciidoc)
+
 (setq org-hugo-base-dir "~/workspace/src/github.com/iocanel/iocanel.github.io")
 
 (defun my/org-hugo-set-export-file-name ()
@@ -1230,45 +1319,68 @@ This utility is meant to help indenity thoue."
   (my/org-hugo-set-bundle)
   (my/org-hugo-set-export-file-name))
 
-(use-package! mpv)
+(use-package! mpv
+  :commands (my/mpv-timestamp-inc my/mpv-timestamp-dec my/mpb-insert-playback-position)
+  :init
+  (add-to-list 'auto-mode-alist '("\\.avi\\'" . my/mpv-play-buffer))
+  (add-to-list 'auto-mode-alist '("\\.mp4\\'" . my/mpv-play-buffer))
+  (add-to-list 'auto-mode-alist '("\\.mkv\\'" . my/mpv-play-buffer))
+  :config
+  (add-hook 'org-metareturn-hook #'my/metareturn-mpv-insert-playback-position)
+  (add-hook 'org-open-at-point-functions #'mpv-seek-to-position-at-point)
+  (org-link-set-parameters "mpv" :follow #'mpv-play :complete #'org-mpv-complete-link))
 
 (defun org-mpv-complete-link (&optional arg)
-    "Link completion for mpv."
-    (replace-regexp-in-string "file:" "mpv:" (org-link-complete-file arg) t t))
-(org-link-set-parameters "mpv" :follow #'mpv-play :complete #'org-mpv-complete-link)
+  "Link completion for mpv."
+  (replace-regexp-in-string "file:" "mpv:" (org-link-complete-file arg) t t))
 
-(defun my/mpv-insert-playback-position-in-org ()
+;;;###autoload
+(defun my/mpv-play-buffer ()
+  "Open video FILENAME with mpv."
+  (interactive)
+  (mpv-play (buffer-file-name))
+  (kill-buffer))
+
+;;;###autoload
+(defun my/mpv-insert-playback-position-as-org-timer ()
   "Isert the playback position as org timer"
   (interactive)
   (mpv-insert-playback-position t))
 
+(defun my/metareturn-mpv-insert-playback-position ()
+  "Optioanlly, isert the playback position as org timer."
+  (when-let ((item-beg (org-in-item-p)))
+    (when (and (not (bound-and-true-p org-timer-start-time))
+               (mpv-live-p)
+               (save-excursion
+                 (goto-char item-beg)
+                 (and (not (org-invisible-p)) (org-at-item-timer-p))))
+      (mpv-insert-playback-position t))))
+
 (defun my/mpv-timestamp-apply-offset (offset)
   "Apply the specified OFFSET to the current timestamp."
-    (let* ((line (buffer-substring-no-properties (bol) (eol)))
-           (hhmmss (replace-regexp-in-string "[ -]+" "" (car (split-string line "::"))))
-           (seconds (org-timer-hms-to-secs hhmmss))
-           (new-seconds (+ offset seconds))
-           (new-hhmmss (org-timer-secs-to-hms new-seconds)))
-      (message "line: %s hhmmss: %s - seconds: %s - new seconds: %s - new hhmmss: %s" line hhmmss seconds new-seconds new-hhmmss)
-      (replace-string-in-region hhmmss new-hhmmss (bol) (eol))
-      (save-excursion
-        (goto-char (bol))
-        (search-forward-regexp "[0-9]+")
-        (org-open-at-point))))
+  (let* ((line (buffer-substring-no-properties (bol) (eol)))
+         (hhmmss (replace-regexp-in-string "[ -]+" "" (car (split-string line "::"))))
+         (seconds (org-timer-hms-to-secs hhmmss))
+         (new-seconds (+ offset seconds))
+         (new-hhmmss (org-timer-secs-to-hms new-seconds)))
+    (replace-string-in-region hhmmss new-hhmmss (bol) (eol))
+    (save-excursion
+      (goto-char (bol))
+      (search-forward-regexp "[0-9]+")
+      (org-open-at-point))))
 
+;;;###autoload
 (defun my/mpv-timestamp-inc ()
   "Increase the timestamp in the current line by 1."
   (interactive)
   (my/mpv-timestamp-apply-offset 1))
 
+;;;###autoload
 (defun my/mpv-timestamp-dec ()
   "Decrease the timestamp in the current line by 1."
   (interactive)
   (my/mpv-timestamp-apply-offset -1))
-
-
-(add-hook 'org-metareturn-hook #'my/mpv-insert-playback-position-in-org)
-(add-hook 'org-open-at-point-functions #'mpv-seek-to-position-at-point)
 
 (map! :leader
       "+" #'my/mpv-timestamp-inc
@@ -1340,6 +1452,13 @@ This utility is meant to help indenity thoue."
 
 (setq org-inline-image--get-current-image (byte-compile 'my/org-inline-image--get-current-image))
 (setq org-inline-image-animate  (byte-compile 'my/org-inline-image-animate ))
+
+(use-package! gnuplot)
+
+(after! org
+     (setq org-capture-templates (append org-capture-templates '(
+                                                                 ("h" "Health")
+                                                                 ("hw" "Weight" table-line (file+olp "~/Documents/org/weight.org" "Weight" "Weight Table")(file "~/Documents/org/templates/weight.orgtmpl"))))))
 
 (setq lsp-idle-delay 0.500)
 (setq lsp-log-io nil) ; if set to true can cause a performance hit
@@ -1417,7 +1536,7 @@ This utility is meant to help indenity thoue."
         user-mail-address "iocanel@gmail.com"
         user-full-name "Ioannis Canellos"
         mu4e-maildir "~/.mail"
-        mu4e-get-mail-command "mbsync -a -c ~/.config/mbsync/config"
+        mu4e-get-mail-command "mbsync -a -c ~/.mbsyncrc"
 
         ;; Having Error: 102: failed to move message
         ;; The following block of config is suggested by https://github.com/djcb/mu/issues/2053
@@ -1660,3 +1779,15 @@ This utility is meant to help indenity thoue."
   (use-package! epc)
   ;;
   (require 'eaf-browser))
+
+(use-package! codegpt
+  :bind (("C-c g c" . codegpt)
+         ("C-c g d" . codegpt-doc)
+         ("C-c g e" . codegpt-explain)
+         ("C-c g f" . codegpt-fix)
+         ("C-c g i" . codegpt-improve))
+  :config
+    (setq! openai-user (replace-regexp-in-string "\n\\'" ""  (shell-command-to-string "pass show services/openai/iocanel/user-id"))
+           openai-key (replace-regexp-in-string "\n\\'" ""  (shell-command-to-string "pass show services/openai/iocanel/api-key"))
+           codegpt-tunnel 'chat
+           codegpt-model "gpt-3.5-turbo"))

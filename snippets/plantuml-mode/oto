@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: one to one
+# key: oto
+# --
+${1: $$(yas-choose-value (my/plantuml-get-entity-names))}  ||--||  ${2: $$(yas-choose-value (my/plantuml-get-entity-names))}

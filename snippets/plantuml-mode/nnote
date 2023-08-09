@@ -1,0 +1,9 @@
+# -*- mode: snippet -*-
+# name: nesting note
+# key: nnote
+# --
+note  ${1:$$(yas-choose-value '("left" "right" "top" "bottom"))} of ${2: $$(yas-choose-value (my/plantuml-get-component-names))}
+{{
+$0
+}}
+end note
